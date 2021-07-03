@@ -98,8 +98,8 @@ install_dependencies () {
   fi
   
   if [[ $yn =~ ^(y|yes)$ ]]; then
-
-    echo -e -n "${GREEN}Is this for a local/home setup? ${RED}(Answer no if AWS/VPS)${NC} y/n: "
+    
+   echo -e -n "${GREEN}Is this for a local/home setup? ${RED}(Answer no if AWS/VPS)${NC} y/n: "
     read ans
     ans=${ans:-"y"}
 
@@ -137,6 +137,14 @@ install_dependencies () {
 
     # start nginx web service
     service nginx start
+    
+    # check if curl is already installed
+    if command -V curl > /dev/null 2>&1; then
+      #curl is available
+    else
+      #curl is not available
+      DEBIAN_FRONTEND=noninteractive apt-get -y -q install curl > /dev/null
+    fi
 
     echo -e "${RED}Installing OpenVPN. Please wait while it finishes...${NC}"
     curl -s -O https://raw.githubusercontent.com/angristan/openvpn-install/master/openvpn-install.sh > /dev/null
