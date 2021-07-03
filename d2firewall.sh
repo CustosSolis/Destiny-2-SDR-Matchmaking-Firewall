@@ -91,12 +91,12 @@ install_dependencies () {
   # check if openvpn is already installed
   if ip a | grep -q "tun0"; then
     yn="n"
-  else 
+  else
     echo -e -n "${GREEN}Would you like to install OpenVPN?${NC} y/n: "
     read yn
     yn=${yn:-"y"}
   fi
-  
+
   if [[ $yn =~ ^(y|yes)$ ]]; then
 
     echo -e -n "${GREEN}Is this for a local/home setup? ${RED}(Answer no if AWS/VPS)${NC} y/n: "
@@ -106,7 +106,7 @@ install_dependencies () {
     if [[ $ans =~ ^(y|yes)$ ]]; then
       # Put all IPs except for IPv6, loopback and openVPN in an array
       ip_address_list=( $( ip a | grep inet | grep -v -e 10.8. -e 127.0.0.1 -e inet6 | awk '{ print $2 }' | cut -f1 -d"/" ) )
-      
+
       echo "Please enter the number which corresponds to the private IP address of your device that connects to your local network: "
       i=1
       # Show all addresses in a numbered list
@@ -114,7 +114,7 @@ install_dependencies () {
         echo "    $i) $address"
         ((i++))
       done
-      
+
       # Have them type out which IP connects to the internet and set IP address based off of that
       read -p "Choice: " ip_line_number
       ip_list_index=$((ip_line_number - 1))
@@ -130,13 +130,16 @@ install_dependencies () {
 
     echo -e "${RED}Installing dependencies. Please wait while it finishes...${NC}"
     apt-get update > /dev/null
-  
+
     # install dependencies
     DEBIAN_FRONTEND=noninteractive apt-get -y -q install iptables iptables-persistent ngrep nginx > /dev/null
     systemctl enable iptables
 
     # start nginx web service
     service nginx start
+
+    # check if curl is already installed
+    type curl > /dev/null 2>&1 || DEBIAN_FRONTEND=noninteractive apt-get -y -q install curl > /dev/null
 
     echo -e "${RED}Installing OpenVPN. Please wait while it finishes...${NC}"
     curl -s -O https://raw.githubusercontent.com/angristan/openvpn-install/master/openvpn-install.sh > /dev/null
@@ -146,7 +149,7 @@ install_dependencies () {
 
     # move openvpn config to public web folder
     cp /"$SUDO_USER"/client.ovpn /var/www/html/client.ovpn
-    
+
     clear
     echo -e "${GREEN}You can download the openvpn config from ${BLUE}http://$ip/client.ovpn"
     echo -e "${GREEN}If you are unable to access this file, you may need to allow/open the http port 80 with your vps provider."
@@ -159,7 +162,7 @@ install_dependencies () {
   else
     DEBIAN_FRONTEND=noninteractive apt-get -y -q install iptables iptables-persistent ngrep > /dev/null
   fi
-  
+
 }
 
 setup () {
@@ -167,7 +170,7 @@ setup () {
   if [ -z "$1" ]; then
     echo -e "${GREEN}Setting up firewall rules.${NC}"
   fi
-  
+
   reset_ip_tables
 
   read -p "Enter your platform xbox, psn, steam: " platform
@@ -206,12 +209,12 @@ setup () {
     #get ids and add to ads array with identifier
     tmp_ids=$(tail -n +5 /tmp/data.txt)
     c=1
-    while IFS= read -r line; do 
+    while IFS= read -r line; do
       idf="system$c"
       ids+=( "$idf;$line" )
       ((c++))
     done <<< "$tmp_ids"
-  else 
+  else
     #add ids manually
 
     if [ -z "$1" ]; then
@@ -224,7 +227,7 @@ setup () {
     fi;
     echo "$snum" >> /tmp/data.txt
     for ((i = 0; i < snum; i++))
-    do 
+    do
       num=$(( $i + 1 ))
       if [ $num -lt 3 ]; then
         who="Fireteam Leader"
@@ -242,7 +245,7 @@ setup () {
   chown "$SUDO_USER":"$SUDO_USER" data.txt
 
   iptables -I FORWARD -i "$INTERFACE" -p udp --dport 27000:27200 -m string --string "$reject_str" --algo "$ALGO" -j REJECT
-  
+
   n=${#ids[*]}
   INDEX=1
   for (( i = n-1; i >= 0; i-- ))
@@ -258,7 +261,7 @@ setup () {
     fi
     ((INDEX++))
   done
-  
+
   INDEX1=1
   for i in "${ids[@]}"
   do
@@ -372,7 +375,7 @@ elif [ "$action" == "sniff" ]; then
 
   # remove duplicates
   awk '!a[$0]++' data.txt > /tmp/data.txt && mv /tmp/data.txt data.txt
-  chown "$SUDO_USER":"$SUDO_USER" data.txt 
+  chown "$SUDO_USER":"$SUDO_USER" data.txt
 
   # update total number of ids
   n=$(tail -n +5 data.txt | wc -l)
