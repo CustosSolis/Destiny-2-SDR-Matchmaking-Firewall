@@ -137,9 +137,6 @@ install_dependencies () {
 
     # start nginx web service
     service nginx start
-    
-    # check if curl is already installed
-    type curl > /dev/null 2>&1 || DEBIAN_FRONTEND=noninteractive apt-get -y -q install curl > /dev/null
 
     # check if curl is already installed
     type curl > /dev/null 2>&1 || DEBIAN_FRONTEND=noninteractive apt-get -y -q install curl > /dev/null
