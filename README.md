@@ -1,8 +1,8 @@
 # Destiny 2 SDR Matchmaking Firewall
 
 ## Download
-#### Clone repo or run this command:
-```wget -q https://raw.githubusercontent.com/CustosSolis/Destiny-2-SDR-Matchmaking-Firewall/main/d2firewall.sh -O ./d2firewall.sh```
+#### Clone repo or run this command: 
+```wget -q https://raw.githubusercontent.com/fswdevl/Destiny-2-SDR-Matchmaking-Firewall/main/d2firewall.sh -O ./d2firewall.sh```
 ## Usage
 #### Setup: initial setup
 ``` sudo bash d2firewall.sh -a setup ```
@@ -12,7 +12,7 @@
 ``` sudo bash d2firewall.sh -a remove ```
 #### Sniff: Auto sniffer. (You must add your 2 host consoles prior to running this)
 ``` sudo bash d2firewall.sh -a sniff ```
-#### Open: Enables public matchmaking
+#### Open: Enables public matchmaking 
 ``` sudo bash d2firewall.sh -a open ```
 #### Close: Disables public matchmaking
 ``` sudo bash d2firewall.sh -a close ```
