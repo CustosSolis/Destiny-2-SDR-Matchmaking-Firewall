@@ -51,8 +51,6 @@ get_platform_match_str () {
     val="xboxpwid:"
   elif [ "$1" == "steam" ]; then
     val="steamid:"
-  elif [ "$1" == "cross-play" ]; then
-    val="cross-play:"
   fi
   echo $val
 }
@@ -67,10 +65,6 @@ auto_sniffer () {
   elif [ "$1" == "xbox" ]; then
     ngrep -l -q -W byline -d "$INTERFACE" "xboxpwid:" udp | grep --line-buffered -o -P 'xboxpwid:\K[A-F0-9]{32}' | tee -a "$2" &
   elif [ "$1" == "steam" ]; then
-    ngrep -l -q -W byline -d "$INTERFACE" "steamid:" udp | grep --line-buffered -o -P 'steamid:\K[0-9]{17}' | tee -a "$2" &
-  elif [ "$1" == "cross-play" ]; then
-    ngrep -l -q -W byline -d "$INTERFACE" "psn-4" udp | grep --line-buffered -o -P 'psn-4[0]{8}\K[A-F0-9]{7}' | tee -a "$2" &
-    ngrep -l -q -W byline -d "$INTERFACE" "xboxpwid:" udp | grep --line-buffered -o -P 'xboxpwid:\K[A-F0-9]{32}' | tee -a "$2" &
     ngrep -l -q -W byline -d "$INTERFACE" "steamid:" udp | grep --line-buffered -o -P 'steamid:\K[0-9]{17}' | tee -a "$2" &
   fi
 
@@ -179,26 +173,26 @@ setup () {
 
   reset_ip_tables
 
-  read -p "Enter your platform (psn/xbox/steam/cross_play): " platform
+  read -p "Enter your platform xbox, psn, steam: " platform
   platform=$(echo "$platform" | xargs)
   platform=${platform:-"psn"}
 
   reject_str=$(get_platform_match_str "$platform")
   echo "$platform" > /tmp/data.txt
-  
+
   read -p "Enter your network/netmask: " net
   net=$(echo "$net" | xargs)
   net=${net:-$NETWORK}
   echo "$net" >> /tmp/data.txt
-  
+
   ids=()
-  read -p "Would you like to sniff the ID automatically?(psn/xbox/steam/cross_play) y/n: " yn
+  read -p "Would you like to sniff the ID automatically?(psn/xbox/steam) y/n: " yn
   yn=${yn:-"y"}
-  if ! [[ $platform =~ ^(psn|xbox|steam|cross-play)$ ]]; then
+  if ! [[ $platform =~ ^(psn|xbox|steam)$ ]]; then
     yn="n"
   fi
   echo "n" >> /tmp/data.txt
-  
+
   #auto sniffer
   if [[ $yn =~ ^(y|yes)$ ]]; then
     echo -e "${RED}Please have the fireteam leaders join each other in orbit.${NC}"
@@ -368,8 +362,8 @@ elif [ "$action" == "remove" ]; then
   fi;
 elif [ "$action" == "sniff" ]; then
   platform=$(sed -n '1p' < data.txt)
-  if ! [[ $platform =~ ^(psn|xbox|steam|cross-play)$ ]]; then
-      echo "Only psn, xbox, steam and cross-play between these platforms are supported atm."
+  if ! [[ $platform =~ ^(psn|xbox|steam)$ ]]; then
+      echo "Only psn,xbox, and steam are supported atm."
     exit 1
   fi
   # allow players to join fireteam
