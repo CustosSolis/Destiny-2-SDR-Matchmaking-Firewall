@@ -1,5 +1,6 @@
 #!/bin/bash
-#credits to @BasRaayman and @inchenzo
+# credits to @BasRaayman and @inchenzo
+# Multi-platform support by CustosSolis
 
 ALGO="bm"
 INTERFACE=$(cat interface.txt 2>/dev/null || echo "tun0")
@@ -44,29 +45,28 @@ reset_ip_tables () {
 }
 
 get_platform_match_str () {
-  local val="psn-4"
-  if [ "$1" == "psn" ]; then
-    val="psn-4"
-  elif [ "$1" == "xbox" ]; then
-    val="xboxpwid:"
-  elif [ "$1" == "steam" ]; then
-    val="steamid:"
-  fi
-  echo $val
+  local platform_ids=()
+  
+  # Add PSN signature
+  platform_ids+=("psn-4")
+  
+  # Add Xbox signature
+  platform_ids+=("xboxpwid:")
+  
+  # Add Steam signature
+  platform_ids+=("steamid:")
+
+  echo "${platform_ids[@]}"
 }
 
 auto_sniffer () {
   echo -e "${RED}Press any key to stop sniffing. DO NOT CTRL C${NC}"
   sleep 1
 
-  #sniff the ids based on platform
-  if [ "$1" == "psn" ]; then
-    ngrep -l -q -W byline -d "$INTERFACE" "psn-4" udp | grep --line-buffered -o -P 'psn-4[0]{8}\K[A-F0-9]{7}' | tee -a "$2" &
-  elif [ "$1" == "xbox" ]; then
-    ngrep -l -q -W byline -d "$INTERFACE" "xboxpwid:" udp | grep --line-buffered -o -P 'xboxpwid:\K[A-F0-9]{32}' | tee -a "$2" &
-  elif [ "$1" == "steam" ]; then
-    ngrep -l -q -W byline -d "$INTERFACE" "steamid:" udp | grep --line-buffered -o -P 'steamid:\K[0-9]{17}' | tee -a "$2" &
-  fi
+  # Run sniffing for all platforms
+  ngrep -l -q -W byline -d "$INTERFACE" "psn-4|xboxpwid:|steamid:" udp |
+    grep --line-buffered -o -P 'psn-4[0]{8}\K[A-F0-9]{7}|xboxpwid:\K[A-F0-9]{32}|steamid:\K[0-9]{17}' |
+    tee -a "$2" &
 
   #run infinitely until key is pressed
   while [ true ] ; do
@@ -173,40 +173,29 @@ setup () {
 
   reset_ip_tables
 
-  read -p "Enter your platform xbox, psn, steam: " platform
-  platform=$(echo "$platform" | xargs)
-  platform=${platform:-"psn"}
-
-  reject_str=$(get_platform_match_str "$platform")
-  echo "$platform" > /tmp/data.txt
-
   read -p "Enter your network/netmask: " net
   net=$(echo "$net" | xargs)
   net=${net:-$NETWORK}
   echo "$net" >> /tmp/data.txt
 
   ids=()
-  read -p "Would you like to sniff the ID automatically?(psn/xbox/steam) y/n: " yn
+  read -p "Would you like to sniff the IDs automatically?(y/n): " yn
   yn=${yn:-"y"}
-  if ! [[ $platform =~ ^(psn|xbox|steam)$ ]]; then
-    yn="n"
-  fi
-  echo "n" >> /tmp/data.txt
 
-  #auto sniffer
+  # Auto-sniffing for multiple platforms
   if [[ $yn =~ ^(y|yes)$ ]]; then
     echo -e "${RED}Please have the fireteam leaders join each other in orbit.${NC}"
 
-    auto_sniffer "$platform" "/tmp/data.txt"
+    auto_sniffer "multi" "/tmp/data.txt"  # Modified to handle all platforms
 
-    #remove duplicates
+    # Remove duplicates
     awk '!a[$0]++' /tmp/data.txt > /tmp/temp.txt && mv /tmp/temp.txt /tmp/data.txt
 
-    #get number of accounts
+    # Get number of accounts
     snum=$(tail -n +4 /tmp/data.txt | wc -l)
     awk "NR==4{print $snum}1" /tmp/data.txt > /tmp/temp.txt && mv /tmp/temp.txt /tmp/data.txt
 
-    #get ids and add to ads array with identifier
+    # Process IDs and add to the list
     tmp_ids=$(tail -n +5 /tmp/data.txt)
     c=1
     while IFS= read -r line; do
@@ -215,16 +204,11 @@ setup () {
       ((c++))
     done <<< "$tmp_ids"
   else
-    #add ids manually
-
-    if [ -z "$1" ]; then
-      echo -e "${RED}Please add the 2 fireteam leaders first.${NC}"
-    fi
-
+    # Manual ID addition
     read -p "How many account IDs do you want to add? " snum
     if [ "$snum" -lt 1 ]; then
       exit 1;
-    fi;
+    fi
     echo "$snum" >> /tmp/data.txt
     for ((i = 0; i < snum; i++))
     do
@@ -240,11 +224,15 @@ setup () {
       echo "$sid" >> /tmp/data.txt
       ids+=( "$idf;$sid" )
     done
-  fi;
+  fi
+
   mv /tmp/data.txt data.txt
   chown "$SUDO_USER":"$SUDO_USER" data.txt
 
-  iptables -I FORWARD -i "$INTERFACE" -p udp --dport 27000:27200 -m string --string "$reject_str" --algo "$ALGO" -j REJECT
+  platform_ids=$(get_platform_match_str)
+  for platform_id in $platform_ids; do
+    iptables -I FORWARD -i "$INTERFACE" -p udp --dport 27000:27200 -m string --string "$platform_id" --algo "$ALGO" -j REJECT
+  done
 
   n=${#ids[*]}
   INDEX=1
@@ -260,28 +248,6 @@ setup () {
       iptables -I FORWARD -i "$INTERFACE" -s "$net" -p udp --dport 27000:27200 -m string --string "${id[1]}" --algo "$ALGO" -j ACCEPT
     fi
     ((INDEX++))
-  done
-
-  INDEX1=1
-  for i in "${ids[@]}"
-  do
-    if [ $INDEX1 -gt 2 ]; then
-      break
-    fi
-    IFS=';' read -r -a id <<< "$i"
-    INDEX2=1
-    for j in "${ids[@]}"
-    do
-      if [ $INDEX2 -gt 2 ]; then
-        break
-      fi
-      if [ "$i" != "$j" ]; then
-        IFS=';' read -r -a idx <<< "$j"
-        iptables -A "${id[0]}" -i "$INTERFACE" -s "$net" -p udp --dport 27000:27200 -m string --string "${idx[1]}" --algo "$ALGO" -j ACCEPT
-      fi
-      ((INDEX2++))
-    done
-    ((INDEX1++))
   done
 
   if [ -z "$1" ]; then
